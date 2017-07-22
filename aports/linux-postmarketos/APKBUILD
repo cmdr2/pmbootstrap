@@ -10,7 +10,7 @@
 # - enable devtmpfs (needed for udev -> touch support in weston)
 
 _vendor=postmarketos
-_flavor=postmarketos-omap
+_flavor=postmarketos
 _hash="7b6fbfd899b4133e4f789843e5967beb139ec4d2"
 _config="config-${_flavor}.armhf"
 
@@ -88,7 +88,7 @@ build() {
 	make ARCH="$_carch" CC="${CC:-gcc}" \
 		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-Alpine" \
 		CFLAGS_MODULE=-fno-pic \
-		zImage modules omap3-n900.dtb \
+		zImage modules dtbs \
 		|| return 1
 }
 
@@ -112,4 +112,4 @@ package() {
 }
 
 sha512sums="683ff447607e1f10af81a539aae8620964173f61fc9fc69b8e108bfdfd49358cc1f5b04a5bd31efcb299f66fac9df2750f92a18ea1b9264a9f0e76d2759b66e9  linux-4.12.2.tar.xz
-5c8ffef2f1aa8fab536bc0d7b310ede1eeba4c9e625b72aa4b7d8c1a1c4186a28899f54be00cb62f264649c873e04127c657fef9d3ab5740500769ebdd1eee8a  config-postmarketos-omap.armhf"
+64da1c25e96e420e97f16396e79bbbd0eb2b819fda5beaf37d4fbef6050bfd2a39b127a306a6791128afd67d7fb985c2e1c7b5c953ed08c041c0c2cc395d4f8e  config-postmarketos.armhf"
