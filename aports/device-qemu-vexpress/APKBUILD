@@ -1,0 +1,23 @@
+pkgname=device-qemu-vexpress
+pkgver=1
+pkgrel=7
+pkgdesc="Simulated device in qemu with vexpress soc"
+url="https://github.com/postmarketOS"
+arch="noarch"
+license="MIT"
+depends="linux-postmarketos"
+makedepends=""
+subpackages=""
+source="deviceinfo"
+options="!check"
+
+build() {
+	return 0
+}
+
+package() {
+	install -D -m644 "$srcdir"/deviceinfo \
+		"$pkgdir"/etc/deviceinfo
+}
+
+sha512sums="09a736c06eb2b9116677366fc43eed3ed837d7782b389b8b1d853185eaeef3ca2e6bb9e350177a7792538e2d9eee5d6968a4543a9bf9250814fe57891b0d999c  deviceinfo"
