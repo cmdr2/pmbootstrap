@@ -1,0 +1,111 @@
+# APKBUILD based on linux-vanilla aport. Changes:
+# - disabled module installation
+# - add !check !tracedeps
+# - package: just install zimage and kernel.release, because the kernel config
+#	does not generate modules or dtb files
+# - do not create -dev subpackage (makes no sense without module support)
+#
+# Kernel config based on: arch/arm/configs/lineageos_mako_defconfig
+# Changes:
+# - enable devtmpfs (needed for udev -> touch support in weston)
+
+_vendor=samsung
+_flavor=samsung-s7562
+_hash="2f4642f454b11274bd0713cee2ca377bb34ecece"
+_config="config-${_flavor}.armhf"
+
+pkgname=linux-${_flavor}
+pkgver=3.0.79
+case $pkgver in
+	*.*.*)  _kernver=${pkgver%.*};;
+	*.*) _kernver=$pkgver;;
+esac
+pkgrel=1
+arch="armhf"
+pkgdesc="Samsung Galaxy Duos S7562 Kernel"
+url="https://github.com/KlinkOnE/android_kernel_ba2x_2.0-1"
+depends="postmarketos-mkinitfs"
+makedepends="perl sed installkernel bash gmp-dev bc linux-headers elfutils-dev"
+options="!strip !check !tracedeps"
+install=
+source="
+	$pkgname-$_hash.zip::${url}/archive/${_hash}.zip
+	$_config
+	compiler-gcc6.h
+	01_fix_multiple_return_address_declarations.patch
+        02_fix_hci_recv_frame_args.patch
+        03_reduce_lzo_compression.patch
+"
+subpackages=""
+license="GPL2"
+
+_abi_release=${pkgver}
+_carch="arm"
+HOSTCC="${CC:-gcc}"
+HOSTCC="${HOSTCC#${CROSS_COMPILE}}"
+
+ksrcdir="$srcdir/android_kernel_ba2x_2.0-1-${_hash}"
+
+prepare() {
+	local _patch_failed=
+	cd "$ksrcdir"
+
+	# first apply patches in specified order
+	for i in $source; do
+		case $i in
+		*.patch)
+			msg "Applying $i..."
+			if ! patch -s -p1 -N -i "$srcdir"/$i; then
+				echo $i >>failed
+				_patch_failed=1
+			fi
+			;;
+		esac
+	done
+
+	if ! [ -z "$_patch_failed" ]; then
+		error "The following patches failed:"
+		cat failed
+		return 1
+	fi
+
+	# gcc6 support
+	cp -v "$srcdir/compiler-gcc6.h" "$ksrcdir/include/linux/"
+
+	mkdir -p "$srcdir"/build
+	cp "$srcdir"/$_config "$srcdir"/build/.config || return 1
+	make -C "$ksrcdir" O="$srcdir"/build ARCH="$_carch" HOSTCC="$HOSTCC" \
+		silentoldconfig
+}
+
+
+
+# this is so we can do: 'abuild menuconfig' to reconfigure kernel
+menuconfig() {
+	cd "$srcdir"/build || return 1
+	make ARCH="$_carch" menuconfig
+	cp .config "$startdir"/$_config
+}
+
+build() {
+	cd "$srcdir"/build
+	unset LDFLAGS
+	make ARCH="$_carch" CC="${CC:-gcc}" \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-Alpine" \
+		|| return 1
+}
+
+package() {
+	install -Dm644 "$srcdir/build/arch/arm/boot/zImage" \
+		"$pkgdir/boot/vmlinuz-$_flavor"
+
+	install -D "$srcdir/build/include/config/kernel.release" \
+		"$pkgdir/usr/share/kernel/$_flavor/kernel.release"
+}
+
+sha512sums="cdb1c8758d4bd5b2d42d41cf1a4110bb0955f9c20b6b55f7ad8183f5496c3a3fad3daf9916d6c1153f26b1e264eb4e439306eb2b41744f4e87f2cde4ed28c390  linux-samsung-s7562-2f4642f454b11274bd0713cee2ca377bb34ecece.zip
+7f47f8e8fe8600e3ed7d63265ad757ff563ced10146c3bddeedeee249162029099e7852b4609e58fb1fa593ed4b03e444263d5eaebca60457719be8b973e428b  config-samsung-s7562.armhf
+d80980e9474c82ba0ef1a6903b434d8bd1b092c40367ba543e72d2c119301c8b2d05265740e4104ca1ac5d15f6c4aa49e8776cb44264a9a28dc551e0d1850dcc  compiler-gcc6.h
+00bd2504cb922204c3b6a9ce243918f44d12f08e12f64535b9ec9f91d827160c4d5da85c3b84788a5f92d9eca63552265a203916505918367e2d397edbe148a8  01_fix_multiple_return_address_declarations.patch
+4dfe2616b57bcf2015d37615bfb540420c6afe85b44f35482e55ea1c2d82e0cccaf9571a17ba1361af036992c1e87c72e7feff43256bda28eaba04cfbd37340a  02_fix_hci_recv_frame_args.patch
+ef5b912c26fea4ab882592bdf7487942c64b123de8d25d08d976f29743f311742ee2f773bf2d110ddb5095f254dbb0bd4487c5cfce77311929082599199e7ebd  03_reduce_lzo_compression.patch"
